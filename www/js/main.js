@@ -94,8 +94,7 @@ define([
 
             /*
              Add connection when inputs are updated
-             */
-            aspect.after(controllerObject, 'addQuantity',
+             	            aspect.after(controllerObject, 'addQuantity',
                     lang.hitch(drawModel, drawModel.addQuantity), true);
             aspect.after(controllerObject, 'setConnections',
                     lang.hitch(drawModel, drawModel.setConnections), true);
