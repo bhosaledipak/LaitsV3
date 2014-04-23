@@ -16,11 +16,12 @@ define([
     "parser/parser",
     "./draw-model",
     "./calculations",
-    "./logging"
+    "./logging",
+    "./description"
 ], function(
         lang, dom, geometry, on, aspect, ioQuery, ready, registry,
         menu, loadSave, model,
-        Graph, Table, wrapText, controlStudent, controlAuthor, Parser, drawmodel, calculations, logging
+        Graph, Table, wrapText, controlStudent, controlAuthor, Parser, drawmodel, calculations, logging, description
         ) {
 
     console.log("load main.js");
@@ -153,7 +154,6 @@ define([
                 table.show();
             });
 
-
            menu.add("doneButton",function(){
                console.debug("done button is clicked");
                window.history.back();
@@ -161,6 +161,15 @@ define([
 
            });
 
+            console.log("attempting to hitch author description object ", registry.byId('authorSetDescription'));
+
+            var desc = new description(givenModel, registry.byId('authorSetDescription'));
+
+            aspect.after(authorDescription, "hide",
+                lang.hitch(desc, desc.closeDescriptionEditor));
+
+            console.log("**** firing description.showDescription ");
+            desc.showDescription();
 
             /*
              BvdS:  this doesn't look quite right.  We want to download
@@ -171,7 +180,7 @@ define([
              Also, make description clickable, with default text "click here".
              These will be wired up to dialog boxes to set the image URL and
              the description.
-             */
+             
             var canvas = document.getElementById('myCanvas');
             var context = canvas.getContext('2d');
             var imageObj = new Image();
@@ -208,6 +217,8 @@ define([
 
                 wrapText(context, desc_text, textLeft, textTop + marginTop, textWidth, textHeight);
             };
+*/
+
 
         });
     });
