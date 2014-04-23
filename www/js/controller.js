@@ -18,7 +18,8 @@ define([
          evaluating those changes.
          */
         disableHandlers: false,
-        disableInitialTextEvent:false,
+	/* The last value entered into the intial value control */
+	lastInitialValue: null,
 
 
         constructor: function(mode, subMode, model, inputStyle){
@@ -53,7 +54,8 @@ define([
 
         // A list of all widgets.  (The constructor mixes this with controlMap)
         widgetMap: {
-            message: 'messageBox'
+            message: 'messageBox',
+            crisisAlert: 'crisisAlertMessage'
         },
 
         // Controls that are select menus
@@ -78,8 +80,8 @@ define([
             var structured = (this._inputStyle == "structured"?"":"none");
             style.set("algebraic", "display", algebraic);
             style.set("structured", "display", structured);
-            style.set("equationInput", "display", algebraic);
-            style.set("equationShow", "display", structured);
+            style.set("equationBox", "display", algebraic);
+            style.set("equationText", "display", structured);
 
             /*
              Initialize fields in the node editor that are
@@ -132,6 +134,17 @@ define([
                 var w = registry.byId(this.controlMap[control]);
                 w._setStatusAttr = setStatus;
             }
+	    /*
+	     If the status is set for equationBox, we also need to set
+	     the status for equationText.  Since equationText is not a widget,
+	     we need to set it explicitly.
+
+	     Adding a watch method to the equationBox didn't work.
+	     */
+	    aspect.after(registry.byId(this.controlMap.equation), "_setStatusAttr", 
+			 lang.hitch({domNode: dom.byId("equationText")}, setStatus),
+			 true);
+	    
             var setEnableOption = function(value){
                 console.log("++++ in setEnableOption, scope=", this);
                 array.forEach(this.options, function(option){
@@ -154,6 +167,14 @@ define([
                 w._setEnableOptionAttr = setEnableOption;
                 w._setDisableOptionAttr = setDisableOption;
             }, this);
+
+	    var crisis = registry.byId(this.widgetMap.crisisAlert);
+	    crisis._setOpenAttr = function(message){
+		console.log("crisis alert message ", message);
+        this.set('content',message); //deprecated error
+		//this.setContent(message);
+		this.show();
+	    };
 
             // Add appender to message widget
             var messageWidget = registry.byId(this.widgetMap.message);
@@ -179,6 +200,7 @@ define([
         // Function called when node editor is closed.
         // This can be used as a hook for saving sessions and logging
         closeEditor: function(){
+	    console.log("++++++++++ entering closeEditor");
             // Erase modifications to the control settingse.
             // Enable all options in select controls.
             array.forEach(this.selects, function(control){
@@ -192,6 +214,17 @@ define([
                 w.set("status", '');  // remove colors
             }
 
+	    // Undo any initial value
+	    var initial = registry.byId(this.controlMap["initial"]);
+	    initial.set("value", "");
+	    this.lastInitialValue = "";
+
+	    // Undo equation labels
+	    this.updateEquationLabels("none");
+
+	    // Reset equationText to be empty
+	    this.structured.reset();
+
             /* Erase messages
              Eventually, we probably want to save and restore
              messages for each node. */
@@ -200,7 +233,7 @@ define([
         },
 
         //set up event handling with UI components
-            _initHandles:function(){
+        _initHandles:function(){
             // Summary: Set up Node Editor Handlers
 
             /*
@@ -328,12 +361,12 @@ define([
         addQuantity: function(source, destinations){},
 
         updateType: function(type){
-            //update node type
+            //update node type on canvas
             console.log("===========>   changing node class to "+type);
             domClass.replace(this.currentID, type);
             var nodeName = this._model.active.getName(this.currentID);
-            if(nodeName && type != "triangle")
-                nodeName = '<div id=' + this.currentID + 'Label><strong>' + nodeName + '</strong></div>';
+            if(nodeName)
+                nodeName='<div id='+this.currentID+'Label  class="bubble"><strong>'+nodeName+'</strong></div>';
             else
                 nodeName = '';
             if(dom.byId(this.currentID+'Label'))
@@ -341,8 +374,36 @@ define([
             else //new node
                 domConstruct.place(nodeName, this.currentID);
 
-            // updating node editor and the model.	    
+            // updating the model and the equation labels	    
             this._model.active.setType(this.currentID, type);
+            this.updateEquationLabels();
+        },
+
+        updateEquationLabels:function(typeIn){
+	    var type = typeIn || this._model.active.getType(this.currentID) || "none";
+            var name = this._model.active.getName(this.currentID);
+            var nodeName = "";
+	    var tt = "";
+	    // Only add label when name exists
+	    if(name){
+		switch(type){
+		case "accumulator":
+                    nodeName = 'new ' + name + ' = ' + 'old ' + name + ' +';
+		    tt = " * Change in Time";
+		    break;
+		case "function":
+                    nodeName = name + ' = ';
+		    break;
+		case "parameter":
+		case "none":
+		    break;
+		default:
+		    console.error("Invalid type ", type);
+		}
+	    }
+	    // Removing all the text is the same as setting display:none.
+            dom.byId('equationLabel').innerHTML = nodeName;
+            dom.byId('timeStepLabel').innerHTML = tt;
         },
 
         equationInsert: function(text){
@@ -537,6 +598,8 @@ define([
                 // Expression now is written in terms of student IDs, when possible.
                 // Save with explicit parentheses for all binary operations.
                 var parsedEquation = parse.toString(true);
+
+		// This duplicates code in equationDoneHandler
                 // console.log("********* Saving equation to model: ", parsedEquation);
                 this._model.active.setEquation(this.currentID, parsedEquation);
 
@@ -574,7 +637,7 @@ define([
         },
 
         // Stub to be overwritten by student or author mode-specific method.
-        initialControlSettings: function(){
+        initialControlSettings: function(id){
             console.error("initialControlSettings should be overwritten.");
         },
 
@@ -596,10 +659,17 @@ define([
 
             var type = model.getType(nodeid);
             console.log('node type is', type || "not set");
-            if(type)registry.byId(this.controlMap.type).set('value', type || 'defaultSelect');
+
+
+
+		registry.byId(this.controlMap.type).set('value', type || 'defaultSelect');
+		//update labels
+		this.updateEquationLabels(type);
+
 
             var initial = model.getInitial(nodeid);
             console.log('initial value is', initial || "not set");
+	    this.lastInitialValue = initial;
             registry.byId(this.controlMap.initial).attr('value', initial || '');
 
             var unit = model.getUnits(nodeid);
@@ -611,6 +681,7 @@ define([
             var mEquation = equation?expression.convert(model, equation):'';
             console.log("equation after conversion ", mEquation);
             registry.byId(this.controlMap.equation).set('value', mEquation);
+	    dom.byId("equationText").innerHTML = mEquation;
 
             /*
              The PM sets enabled/disabled and color for the controls

@@ -534,9 +534,13 @@ define([
                 });
             };
 
-            // Alert controller of correct answer if status will be set to 'demo'
+            // Send correct answer to controller if status will be set to 'demo'
             if (interpretation === "lastFailure" || interpretation === "secondFailure") {
                 answer = this.model.student.getCorrectAnswer(id, nodePart);
+		// In case of an equation, we need to substitute variable names in for the IDs.
+		if(nodePart=="equation"){
+		    answer = check.convert(this.model.given, answer);
+		}
                 console.log("****\n", "set to: ", {id: nodePart, attribute: "value", value: answer});
                 returnObj.push({id: nodePart, attribute: "value", value: answer});
             }
@@ -568,7 +572,8 @@ define([
                     this._enableNext(returnObj, givenID, nodePart, lastElement);
                 }
             }
-            console.log(returnObj);
+            //returnObj.push([{id: "crisisAlert", attribute: "open", value: "You should be more careful."}]);
+            console.log("**** PM returning\n", returnObj);
             return returnObj;
         },
         /*****

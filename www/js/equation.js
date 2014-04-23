@@ -9,15 +9,12 @@ define([
     "dojo/_base/array", "dojo/_base/lang", "parser/parser"
 ], function(array, lang, Parser) {
 
-    function equivalentError(message) {
-
-    }
-    ;
-
     return {
         parse: function(equation) {
             return Parser.parse(equation);
         },
+        isVariable: Parser.isVariable,
+
         /**
          * Evaluates two expressions for equivalence by comparing the given variables, and then
          *      testing the expressions with values assigned to the variables
@@ -79,7 +76,9 @@ define([
             var node = subModel.getNode(id);
             if (vals[id]) {
                 // if already assigned a value, do nothing.
-            } else if (node.type == 'parameter' || node.type == 'accumulator') {
+            } else if (node.type == 'parameter' || node.type == 'accumulator' || !node.equation) {
+                /* Parameter and accumulator nodes, as well as nodes without an equation, 
+		are treated as independent. */
                 vals[id] = Math.random();
             } else {
                 if (!parents)
@@ -90,6 +89,8 @@ define([
                 }
                 parents[id] = true;
                 // Evaluate function node
+		console.log("=========== about to parse ", node.equation);
+		console.warn("========    It is important to log failures of this parse");
                 var parse = Parser.parse(node.equation);
                 array.forEach(parse.variables(), function(x) {
                     this.evalVar(x, subModel, vals, parents);
@@ -125,6 +126,7 @@ define([
          equations and inputs of existing nodes.
          */
         addQuantity: function(id, subModel) {
+
             var name = subModel.getName(id);
             array.forEach(subModel.getNodes(), function(node) {
                 if (node.equation) {

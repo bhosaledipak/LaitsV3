@@ -130,6 +130,26 @@ define([
                 array.forEach(this.given.getNodes(), intID);
                 array.forEach(this.student.getNodes(), intID);
                 this._ID = largest + 1;
+
+		/*
+		 Sanity test that all given model IDs, node names,
+		 and descriptions are distinct
+		 */
+		var ids = {}, names = {}, descriptions = {};
+		array.forEach(this.given.getNodes(), function(node){
+		    // console.log("********* testing ", node.ID, node.name, node.description);
+		    if(node.ID in ids)
+			throw new Error("Duplicate node id " + node.id);
+		    if(node.name in names)
+			throw new Error("Duplicate node name \"" + node.name  + 
+					"\" for " + node.ID + " and " + names[node.name]);
+		    if(node.description in descriptions)
+			throw new Error("Duplicate node description \"" + node.description + 
+					"\" for " + node.ID + " and " + descriptions[node.description]);
+		    ids[node.ID] = true;
+		    names[node.name] = node.ID;
+		    descriptions[node.description] = node.ID;		    
+		}, this);
             },
             getModelAsString: function() {
                 // Summary: Returns a JSON object in string format
@@ -355,6 +375,10 @@ define([
                 var ret = this.getNode(id);
                 if (ret)
                     ret.type = type;
+            },
+            setPosition: function(/*string*/ id, /*object*/ positionObject) {
+                // Summary: sets the "X" and "Y" values of a node's position
+                this.getNode(id).position = positionObject;
             },
             addInput: function(/*string*/ input, /*string*/ inputInto) {
                 console.error("Deprecated.  Use setInputs() instead.");
@@ -590,10 +614,6 @@ define([
                 // When undefined, status[control] needs to be set explicitly.
                 this.getNode(id).status[control] = lang.mixin(attributes, options);
                 return attributes;
-            },
-            setPosition: function(/*string*/ id, /*object*/ positionObject) {
-                // Summary: sets the "X" and "Y" values of a node's position
-                this.getNode(id).position = positionObject;
             }
         }, both);
 
