@@ -161,14 +161,11 @@ define([
 
            });
 
-            console.log("attempting to hitch author description object ", registry.byId('authorSetDescription'));
-
-            var desc = new description(givenModel, registry.byId('authorSetDescription'));
+            var desc = new description(givenModel, registry.byId('authorSetDescription'), registry.byId('authorSetTimeStart'), registry.byId('authorSetTimeEnd'), registry.byId('authorSetTimeStep'), registry.byId('authorSetTimeStepUnits'), registry.byId('authorSetImage'));
 
             aspect.after(authorDescription, "hide",
                 lang.hitch(desc, desc.closeDescriptionEditor));
 
-            console.log("**** firing description.showDescription ");
             desc.showDescription();
 
             /*
